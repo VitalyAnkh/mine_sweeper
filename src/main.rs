@@ -24,6 +24,14 @@ fn main() {
                     .child(Button::new_raw(" Best scores ", |s| {
                         s.add_layer(Dialog::info("Not yet!").title("Scores"))
                     }))
+                    .child(Button::new_raw(" Help ", |s| {
+                        s.add_layer(Dialog::info(
+                            "Controls:
+Reveal cell:                  left click
+Mark as bomb:                 middle click
+Reveal nearby unmarked cells: right click",
+                        ));
+                    }))
                     .child(Button::new_raw("    Exit     ", |s| s.quit())),
             ),
     );
@@ -39,10 +47,10 @@ fn show_options(siv: &mut Cursive) {
                 SelectView::new()
                     .item(
                         "Very Easy: 4x4,   3 mines",
-                        game::Options{
-                            size:Vec2::new(4,4),
-                            mines:3,
-                        }
+                        game::Options {
+                            size: Vec2::new(4, 4),
+                            mines: 3,
+                        },
                     )
                     .item(
                         "Easy:      8x8,   10 mines",
@@ -122,14 +130,14 @@ impl BoardView {
             let new_cell = match self.overlay[i] {
                 Cell::Unknown => {
                     self.missing_mines -= 1;
-                    println!("You think you has {} bomb left!",self.missing_mines);
-                    self.check_completed();
+                    println!("You think you has {} bomb left!", self.missing_mines);
+
                     Cell::Flag
                 }
                 Cell::Flag => {
                     self.missing_mines += 1;
-                    println!("You think you has {} bomb left!",self.missing_mines);
-                    self.check_completed();
+                    println!("You think you has {} bomb left!", self.missing_mines);
+
                     Cell::Unknown
                 }
                 other => other,
@@ -144,8 +152,23 @@ impl BoardView {
                 return EventResult::Consumed(None);
             }
 
+            match self.missing_mines {
+                0 => {
+                    return EventResult::with_cb(|s| {
+                        s.add_layer(Dialog::text("YOU WIN!👏").button("Ok", |s| {
+                            s.pop_layer();
+                            s.pop_layer();
+                        }))
+                    });
+                }
+                _ => {}
+            }
+
             // Action!
-            match self.board.cells[i] {
+            match
+                self.
+                    board.
+                    cells[i] {
                 game::Cell::Bomb => {
                     return EventResult::with_cb(|s| {
                         s.add_layer(Dialog::text("BOOOOOOM").button("Ok", |s| {
@@ -193,17 +216,6 @@ impl BoardView {
         }
 
         EventResult::Consumed(None)
-    }
-    fn check_completed(&mut self){
-        if self.missing_mines == 0
-        {
-            EventResult::with_cb(|s| {
-                s.add_layer(Dialog::text("WIN!").button("Ok", |s| {
-                    s.pop_layer();
-                    s.pop_layer();
-                }));
-            });
-        }
     }
 }
 
@@ -282,11 +294,8 @@ impl cursive::view::View for BoardView {
                     self.focused = None;
                 }
             }
-//            Event::Char(' ') => self.check_completed(),
-            Event::Key(cursive::event::Key::Esc)=>self.check_completed(),
             _ => (),
         }
-        self.check_completed();
         EventResult::Ignored
     }
     fn required_size(&mut self, _: Vec2) -> Vec2 {
@@ -305,11 +314,4 @@ fn new_game(siv: &mut Cursive, options: game::Options) {
                 s.pop_layer();
             }),
     );
-
-    siv.add_layer(Dialog::info(
-        "Controls:
-Reveal cell:                  left click
-Mark as bomb:                 middle click
-Reveal nearby unmarked cells: right click",
-    ));
 }
