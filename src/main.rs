@@ -1,15 +1,15 @@
 extern crate cursive;
 extern crate rand;
 
-mod game;
-
+use cursive::Cursive;
 use cursive::direction::Direction;
 use cursive::event::{Event, EventResult, MouseButton, MouseEvent};
+use cursive::Printer;
 use cursive::theme::{BaseColor, Color, ColorStyle};
 use cursive::vec::Vec2;
 use cursive::views::{Button, Dialog, LinearLayout, Panel, SelectView};
-use cursive::Cursive;
-use cursive::Printer;
+
+mod game;
 
 fn main() {
     let mut siv = Cursive::default();
@@ -37,6 +37,13 @@ fn show_options(siv: &mut Cursive) {
             .title("Select difficulty")
             .content(
                 SelectView::new()
+                    .item(
+                        "Very Easy: 4x4,   3 mines",
+                        game::Options{
+                            size:Vec2::new(4,4),
+                            mines:3,
+                        }
+                    )
                     .item(
                         "Easy:      8x8,   10 mines",
                         game::Options {
@@ -82,7 +89,7 @@ struct BoardView {
     overlay: Vec<Cell>,
 
     focused: Option<Vec2>,
-    _missing_mines: usize,
+    missing_mines: usize,
 }
 
 impl BoardView {
@@ -93,7 +100,7 @@ impl BoardView {
             board,
             overlay,
             focused: None,
-            _missing_mines: options.mines,
+            missing_mines: options.mines,
         }
     }
 
@@ -113,8 +120,18 @@ impl BoardView {
     fn flag(&mut self, pos: Vec2) {
         if let Some(i) = self.board.cell_id(pos) {
             let new_cell = match self.overlay[i] {
-                Cell::Unknown => Cell::Flag,
-                Cell::Flag => Cell::Unknown,
+                Cell::Unknown => {
+                    self.missing_mines -= 1;
+                    println!("You think you has {} bomb left!",self.missing_mines);
+                    self.check_completed();
+                    Cell::Flag
+                }
+                Cell::Flag => {
+                    self.missing_mines += 1;
+                    println!("You think you has {} bomb left!",self.missing_mines);
+                    self.check_completed();
+                    Cell::Unknown
+                }
                 other => other,
             };
             self.overlay[i] = new_cell;
@@ -131,11 +148,11 @@ impl BoardView {
             match self.board.cells[i] {
                 game::Cell::Bomb => {
                     return EventResult::with_cb(|s| {
-                        s.add_layer(Dialog::text("BOOOM").button("Ok", |s| {
+                        s.add_layer(Dialog::text("BOOOOOOM").button("Ok", |s| {
                             s.pop_layer();
                             s.pop_layer();
                         }));
-                    })
+                    });
                 }
                 game::Cell::Free(n) => {
                     self.overlay[i] = Cell::Visible(n);
@@ -177,6 +194,17 @@ impl BoardView {
 
         EventResult::Consumed(None)
     }
+    fn check_completed(&mut self){
+        if self.missing_mines == 0
+        {
+            EventResult::with_cb(|s| {
+                s.add_layer(Dialog::text("WIN!").button("Ok", |s| {
+                    s.pop_layer();
+                    s.pop_layer();
+                }));
+            });
+        }
+    }
 }
 
 impl cursive::view::View for BoardView {
@@ -187,7 +215,7 @@ impl cursive::view::View for BoardView {
 
             let text = match *cell {
                 Cell::Unknown => "[]",
-                Cell::Flag => "()",
+                Cell::Flag => "💣",
                 Cell::Visible(n) => ["  ", " 1", " 2", " 3", " 4", " 5", " 6", " 7", " 8"][n],
             };
 
@@ -240,11 +268,11 @@ impl cursive::view::View for BoardView {
                         // We got a click here!
                         match btn {
                             MouseButton::Left => return self.reveal(pos),
-                            MouseButton::Right => {
+                            MouseButton::Middle => {
                                 self.flag(pos);
                                 return EventResult::Consumed(None);
                             }
-                            MouseButton::Middle => {
+                            MouseButton::Right => {
                                 return self.auto_reveal(pos);
                             }
                             _ => (),
@@ -254,12 +282,13 @@ impl cursive::view::View for BoardView {
                     self.focused = None;
                 }
             }
+//            Event::Char(' ') => self.check_completed(),
+            Event::Key(cursive::event::Key::Esc)=>self.check_completed(),
             _ => (),
         }
-
+        self.check_completed();
         EventResult::Ignored
     }
-
     fn required_size(&mut self, _: Vec2) -> Vec2 {
         self.board.size.map_x(|x| 2 * x)
     }
@@ -280,7 +309,7 @@ fn new_game(siv: &mut Cursive, options: game::Options) {
     siv.add_layer(Dialog::info(
         "Controls:
 Reveal cell:                  left click
-Mark as mine:                 right-click
-Reveal nearby unmarked cells: middle-click",
+Mark as bomb:                 middle click
+Reveal nearby unmarked cells: right click",
     ));
 }
