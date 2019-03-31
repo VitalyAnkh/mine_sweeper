@@ -5,6 +5,7 @@ authors = ["VitalyR <vitalyankh@gmail.com>"]
 edition = "2018"
 license="MIT"
 description="Minesweeper written in Rust, an adaption of the cursive's example"
+repository="git@github.com:VitalyAnkh/mine_sweeper.git"
 
 [dependencies]
 rand = "0.6.5"
