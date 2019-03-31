@@ -46,7 +46,7 @@ fn show_options(siv: &mut Cursive) {
             .content(
                 SelectView::new()
                     .item(
-                        "Very Easy: 4x4,   3 mines",
+                        "Very Easy: 4x4,   3  mines",
                         game::Options {
                             size: Vec2::new(4, 4),
                             mines: 3,
@@ -125,33 +125,57 @@ impl BoardView {
             })
     }
 
-    fn flag(&mut self, pos: Vec2) {
+    fn flag(&mut self, pos: Vec2) -> EventResult {
         if let Some(i) = self.board.cell_id(pos) {
             let new_cell = match self.overlay[i] {
                 Cell::Unknown => {
                     self.missing_mines -= 1;
-                    println!("You think you has {} bomb left!", self.missing_mines);
-
+                    match self.missing_mines {
+                        1 => println!("You think you has {} mine left!", self.missing_mines),
+                        0 => println!("Are you really finished? Click anywhere to check!😉"),
+                        _ => println!("You think you has {} mines left!", self.missing_mines)
+                    }
                     Cell::Flag
                 }
                 Cell::Flag => {
                     self.missing_mines += 1;
                     println!("You think you has {} bomb left!", self.missing_mines);
-
                     Cell::Unknown
                 }
                 other => other,
             };
             self.overlay[i] = new_cell;
         }
+        match self.missing_mines {
+            0 => {
+                return EventResult::with_cb(|s| {
+                    s.add_layer(Dialog::text("YOU WIN!👏").button("Ok", |s| {
+                        s.pop_layer();
+                        s.pop_layer();
+                    }))
+                });
+            }
+            _ => {}
+        }
+        return EventResult::Consumed(None);
     }
 
     fn reveal(&mut self, pos: Vec2) -> EventResult {
+        match self.missing_mines {
+            0 => {
+                return EventResult::with_cb(|s| {
+                    s.add_layer(Dialog::text("YOU WIN!👏").button("Ok", |s| {
+                        s.pop_layer();
+                        s.pop_layer();
+                    }))
+                });
+            }
+            _ => {}
+        }
         if let Some(i) = self.board.cell_id(pos) {
             if self.overlay[i] != Cell::Unknown {
                 return EventResult::Consumed(None);
             }
-
             match self.missing_mines {
                 0 => {
                     return EventResult::with_cb(|s| {
@@ -163,6 +187,7 @@ impl BoardView {
                 }
                 _ => {}
             }
+
 
             // Action!
             match
@@ -188,7 +213,7 @@ impl BoardView {
                 }
             }
         }
-        return EventResult::Consumed(None);
+        EventResult::Consumed(None)
     }
 
     fn auto_reveal(&mut self, pos: Vec2) -> EventResult {
@@ -226,8 +251,8 @@ impl cursive::view::View for BoardView {
             let y = i / self.board.size.x;
 
             let text = match *cell {
-                Cell::Unknown => "[]",
-                Cell::Flag => "💣",
+                Cell::Unknown => "[]",//"[]" "⛶"
+                Cell::Flag => " ⚐",//"💣"  " ⚐"
                 Cell::Visible(n) => ["  ", " 1", " 2", " 3", " 4", " 5", " 6", " 7", " 8"][n],
             };
 
