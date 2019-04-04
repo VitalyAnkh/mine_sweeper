@@ -139,7 +139,11 @@ impl BoardView {
                 }
                 Cell::Flag => {
                     self.missing_mines += 1;
-                    println!("You think you has {} bomb left!", self.missing_mines);
+                    match self.missing_mines {
+                        1 => println!("You think you has {} mine left!", self.missing_mines),
+                        0 => println!("Are you really finished? Click anywhere to check!😉"),
+                        _ => println!("You think you has {} mines left!", self.missing_mines)
+                    }
                     Cell::Unknown
                 }
                 other => other,
